@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Development rules - more permissive for testing
+    // TODO: Tighten security for production
+    
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow authenticated users to read other users (for development)
+      allow read: if request.auth != null;
+    }
+    
+    // Users can read and write their own itineraries
+    match /itineraries/{itineraryId} {
+      allow read, write: if request.auth != null && 
+        (resource == null || resource.data.userId == request.auth.uid);
+      
+      // Allow reading public itineraries
+      allow read: if request.auth != null && 
+        resource.data.isPublic == true;
+        
+      // Allow all authenticated users to read (for development)
+      allow read: if request.auth != null;
+    }
+    
+    // Users can write their own behavior data
+    match /user_behavior/{behaviorId} {
+      allow write: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Allow all authenticated users to read (for development)
+      allow read: if request.auth != null;
+    }
+    
+    // ML metrics - allow all authenticated users for development
+    match /ml_metrics/{metricId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Default allow for development (remove in production)
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
